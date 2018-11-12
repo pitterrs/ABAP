@@ -1,0 +1,8 @@
+CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      I_CALLBACK_PROGRAM = SY-REPID
+      I_GRID_TITLE       = 'Dados dos Voos'
+      IS_LAYOUT          = WA_LAYOUT
+      IT_FIELDCAT        = IT_FIELDCAT
+    TABLES
+      T_OUTTAB           = IT_FLIGHT.

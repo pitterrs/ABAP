@@ -1,0 +1,27 @@
+*Função para ler números
+CALL FUNCTION 'SPELL_AMOUNT'
+ EXPORTING
+   AMOUNT          = P_NUM
+   CURRENCY        = P_MOEDA
+   LANGUAGE        = SY-LANGU
+ IMPORTING
+   IN_WORDS        = VL_NUM
+ EXCEPTIONS
+   NOT_FOUND       = 1
+   TOO_LARGE       = 2
+   OTHERS          = 3.
+IF SY-SUBRC = 1.
+  MESSAGE 'VALOR NÃO ENCONTRADO'(001) TYPE 'I'.
+ELSEIF SY-SUBRC = 2.
+  MESSAGE 'VALOR MUITO GRANDE' TYPE 'I'.
+ENDIF.
+
+IF VL_NUM NE 'ZERO'.
+CONCATENATE 'O valor digitado é:'
+            VL_NUM-WORD
+            'REAIS E'
+            VL_NUM-DECWORD
+            'CENTAVOS'
+            INTO VL_RESULT
+            SEPARATED BY SPACE.
+ENDIF.

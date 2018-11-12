@@ -1,0 +1,8 @@
+*Função para Localizar um arquivo no windows
+  CALL FUNCTION 'GUI_FILE_LOAD_DIALOG'
+    EXPORTING
+      WINDOW_TITLE      = 'Usuário'
+      DEFAULT_EXTENSION = 'TXT'
+      DEFAULT_FILE_NAME = P_FILE
+    IMPORTING
+      FULLPATH          = P_FILE.
