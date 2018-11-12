@@ -1,0 +1,36 @@
+Classe e metodos para o SAP somente.
+Usar função para programas que serão ligadas a sistemas fora do SAP.
+
+*&---------------------------------------------------------------------*
+*& Report  ZMETODO_PITTER
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT ZMETODO_PITTER.
+
+DATA V_RESULT TYPE I.
+
+*DECLARA UM OBJETO DO TIPO DA CLASSE
+DATA O_CLAS TYPE REF TO ZCLASSE_PITTER.
+
+*INSTANCIAR A CLASSE
+CREATE OBJECT O_CLAS.
+
+PARAMETERS: p_data1 type sy-datum,
+            p_data2 type sy-datum.
+
+
+START-OF-SELECTION.
+
+*           OBJETO
+CALL METHOD O_CLAS->CALCULO_DATAS
+  EXPORTING
+    DATA1     = P_DATA1
+    DATA2     = P_DATA2
+  IMPORTING
+    RESULTADO = V_RESULT.
+
+WRITE V_RESULT.

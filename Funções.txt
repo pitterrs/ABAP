@@ -1,0 +1,143 @@
+*&---------------------------------------------------------------------*
+*& Report  ZEXTENSO10_00
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT ZEXTENSO10_00.
+
+
+
+SELECTION-SCREEN BEGIN OF BLOCK A1 WITH FRAME TITLE TEXT-001.
+PARAMETERS: P_NUM   TYPE P DECIMALS 2,
+            P_MOEDA TYPE SY-WAERS DEFAULT 'BRL',
+            P_LANGU TYPE SY-LANGU DEFAULT 'PT'.
+SELECTION-SCREEN END OF BLOCK A1.
+
+START-OF-SELECTION.
+
+  DATA VL_NUM TYPE SPELL.
+  DATA VL_RESULT TYPE STRING.
+
+CALL FUNCTION 'SPELL_AMOUNT'
+ EXPORTING
+   AMOUNT          = P_NUM
+   CURRENCY        = P_MOEDA
+   LANGUAGE        = SY-LANGU
+ IMPORTING
+   IN_WORDS        = VL_NUM
+ EXCEPTIONS
+   NOT_FOUND       = 1
+   TOO_LARGE       = 2
+   OTHERS          = 3.
+IF SY-SUBRC = 1.
+  MESSAGE 'VALOR NÃO ENCONTRADO'(001) TYPE 'I'.
+ELSEIF SY-SUBRC = 2.
+  MESSAGE 'VALOR MUITO GRANDE' TYPE 'I'.
+ENDIF.
+
+IF VL_NUM NE 'ZERO'.
+CONCATENATE 'O valor digitado é:'
+            VL_NUM-WORD
+            'REAIS E'
+            VL_NUM-DECWORD
+            'CENTAVOS'
+            INTO VL_RESULT
+            SEPARATED BY SPACE.
+ENDIF.
+
+WRITE: VL_RESULT.
+
+
+__________________________________________________________________________
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Report  ZFUNCAO_10_00
+*&
+*&---------------------------------------------------------------------*
+*& Descrição: PROGRAMA MODELO DE FUNÇÃO
+*& Autor: Pitter Rezende da Silva
+*&---------------------------------------------------------------------*
+REPORT ZFUNCAO_10_01.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK G1 WITH FRAME TITLE TEXT-T01.
+PARAMETERS P_DATA TYPE SY-DATUM.
+SELECTION-SCREEN END OF BLOCK G1.
+
+START-OF-SELECTION.
+
+  DATA VL_DATE TYPE DTRESR-WEEKDAY.
+
+  CALL FUNCTION 'DATE_TO_DAY'
+    EXPORTING
+      DATE    = P_DATA
+    IMPORTING
+      WEEKDAY = VL_DATE.
+
+  WRITE: 'O dia da semana é:'(001):,
+         VL_DATE.
+
+
+
+
+__________________________________________________________________________
+
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Report  ZEXTENSO10_00
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT ZEXTENSO10_00.
+
+
+
+SELECTION-SCREEN BEGIN OF BLOCK A1 WITH FRAME TITLE TEXT-001.
+PARAMETERS: P_NUM   TYPE P DECIMALS 2,
+            P_MOEDA TYPE SY-WAERS DEFAULT 'BRL',
+            P_LANGU TYPE SY-LANGU DEFAULT 'PT'.
+SELECTION-SCREEN END OF BLOCK A1.
+
+START-OF-SELECTION.
+
+  DATA VL_NUM TYPE SPELL.
+  DATA VL_RESULT TYPE STRING.
+
+CALL FUNCTION 'SPELL_AMOUNT'
+ EXPORTING
+   AMOUNT          = P_NUM
+   CURRENCY        = P_MOEDA
+   LANGUAGE        = SY-LANGU
+ IMPORTING
+   IN_WORDS        = VL_NUM
+ EXCEPTIONS
+   NOT_FOUND       = 1
+   TOO_LARGE       = 2
+   OTHERS          = 3.
+IF SY-SUBRC = 1.
+  MESSAGE 'VALOR NÃO ENCONTRADO'(001) TYPE 'I'.
+ELSEIF SY-SUBRC = 2.
+  MESSAGE 'VALOR MUITO GRANDE' TYPE 'I'.
+ENDIF.
+
+IF VL_NUM NE 'ZERO'.
+CONCATENATE 'O valor digitado é:'
+            VL_NUM-WORD
+            'REAIS E'
+            VL_NUM-DECWORD
+            'CENTAVOS'
+            INTO VL_RESULT
+            SEPARATED BY SPACE.
+ENDIF.
+
+WRITE: VL_RESULT.

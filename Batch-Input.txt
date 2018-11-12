@@ -1,0 +1,191 @@
+Batch-Input
+
+Transação - SHDB
+Estrutura - BDCDATA (Estrutura não armazena dados)
+_________________________________________________________________________________
+
+*&---------------------------------------------------------------------*
+*& Report  ZBATCHI_INPUT_PITTER
+*&
+*&---------------------------------------------------------------------*
+*& Descrição: Programa Modelo de Batch-Input
+*& Data: 09/11/2018
+*&---------------------------------------------------------------------*
+REPORT ZBATCHI_INPUT_PITTER.
+
+INCLUDE ZBATCHI_INPUT_PITTER_TOP.
+
+**********************************************************************
+* Tela de Seleção
+**********************************************************************
+SELECTION-SCREEN BEGIN OF BLOCK Z1 WITH FRAME TITLE TEXT-001.
+PARAMETERS P_FILE TYPE STRING.
+SELECTION-SCREEN END OF BLOCK Z1.
+
+**********************************************************************
+* Tela de seleção - Event
+**********************************************************************
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+
+*Função para Localizar um arquivo no windows
+  CALL FUNCTION 'GUI_FILE_LOAD_DIALOG'
+    EXPORTING
+      WINDOW_TITLE      = 'Usuário'
+      DEFAULT_EXTENSION = 'TXT'
+      DEFAULT_FILE_NAME = P_FILE
+    IMPORTING
+      FULLPATH          = P_FILE.
+
+
+**********************************************************************
+* Evento - Execução do Programa
+**********************************************************************
+START-OF-SELECTION.
+
+  PERFORM F_CARREGA_ARQUIVO.
+
+  PERFORM f_processa_dados.
+*&---------------------------------------------------------------------*
+*&      Form  F_CARREGA_ARQUIVO
+*&---------------------------------------------------------------------*
+*       Carrega o Arquivo Selecionado
+*----------------------------------------------------------------------*
+FORM F_CARREGA_ARQUIVO .
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      FILENAME                = P_FILE
+    TABLES
+      DATA_TAB                = TI_USER
+    EXCEPTIONS
+      FILE_OPEN_ERROR         = 1
+      FILE_READ_ERROR         = 2
+      NO_BATCH                = 3
+      GUI_REFUSE_FILETRANSFER = 4
+      INVALID_TYPE            = 5
+      NO_AUTHORITY            = 6
+      UNKNOWN_ERROR           = 7
+      BAD_DATA_FORMAT         = 8
+      HEADER_NOT_ALLOWED      = 9
+      SEPARATOR_NOT_ALLOWED   = 10
+      HEADER_TOO_LONG         = 11
+      UNKNOWN_DP_ERROR        = 12
+      ACCESS_DENIED           = 13
+      DP_OUT_OF_MEMORY        = 14
+      DISK_FULL               = 15
+      DP_TIMEOUT              = 16
+      OTHERS                  = 17.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE 'Erro ao carregar o Arquivo'(002) TYPE 'I'.
+    STOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_PROCESSA_DADOS
+*&---------------------------------------------------------------------*
+*       Processa dados do Batch-Input
+*----------------------------------------------------------------------*
+FORM F_PROCESSA_DADOS .
+
+  LOOP AT ti_user into wa_user.
+
+  PERFORM f_carrega_bdcdata USING:
+         'X' 'SAPLSUID_MAINTENANCE' '1050',
+         ' ' 'BDC_OKCODE'           '=CHAN',
+         ' ' 'SUID_ST_BNAME-BNAME'  WA_USER-USUARIO.
+
+  PERFORM f_carrega_bdcdata USING:
+         'X' 'SAPLSUID_MAINTENANCE'              '1100',
+         ' ' 'BDC_OKCODE'                        '=UPD',
+         ' ' 'SUID_ST_NODE_WORKPLACE-DEPARTMENT' WA_USER-DEPTO.
+  ENDLOOP.
+
+  PERFORM f_carrega_bdcdata USING:
+          'X' 'SAPLSUID_MAINTENANCE'              '1050',
+          ' ' 'BDC_OKCODE'                        '/EBACK'.
+
+    WA_PARAMS-DISMODE  = 'N'. "A - VISIVEL / N - BACKGROUND
+    WA_PARAMS-RACOMMIT = 'X'.
+
+  CALL TRANSACTION 'SU01'
+                   USING TI_BDC
+                   OPTIONS FROM WA_PARAMS
+                   MESSAGES INTO TI_MSG.
+
+  LOOP AT TI_MSG INTO WA_MSG.
+
+    CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+      EXPORTING
+        MSGID                     = WA_MSG-MSGID
+        MSGNR                     = WA_MSG-MSGNR
+        MSGV1                     = WA_MSG-MSGV1
+        MSGV2                     = WA_MSG-MSGV2
+        MSGV3                     = WA_MSG-MSGV3
+        MSGV4                     = WA_MSG-MSGV4
+     IMPORTING
+        MESSAGE_TEXT_OUTPUT       = VG_TEXTO.
+
+
+     IF WA_MSG-MSGTYP = 'S'.
+
+       WRITE: /3 ICON_RED_LIGHT AS ICON,
+                 VG_TEXTO.
+
+     ENDIF.
+   ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_CARREGA_BDCDATA
+*&---------------------------------------------------------------------*
+*       Carrega BDCDATA
+*----------------------------------------------------------------------*
+FORM F_CARREGA_BDCDATA USING P_X P_1 P_2.
+
+
+  IF P_X = 'X'.
+     WA_BDC-PROGRAM  = P_1.
+     WA_BDC-DYNPRO   = P_2.
+     WA_BDC-DYNBEGIN = P_X.
+  ELSE.
+     WA_BDC-FNAM     = P_1.
+     WA_BDC-FVAL     = P_2.
+  ENDIF.
+  APPEND WA_BDC TO TI_BDC.
+  CLEAR  WA_BDC.
+ENDFORM.
+
+________________________________________________________________________________
+
+Include do programa de batch-input
+
+*&---------------------------------------------------------------------*
+*&  Include           ZBATCHI_INPUT_PITTER_TOP
+*&---------------------------------------------------------------------*
+
+
+**********************************************************************
+* Types /  Estrutura
+**********************************************************************
+TYPES: BEGIN OF TY_USER,
+         USUARIO(12) TYPE C,
+         DEPTO(40)   TYPE C,
+       END OF TY_USER.
+
+**********************************************************************
+* WordArea
+**********************************************************************
+DATA: WA_USER   TYPE TY_USER,
+      WA_PARAMS TYPE CTU_PARAMS,
+      WA_BDC    TYPE BDCDATA,
+      WA_MSG    TYPE BDCMSGCOLL.
+
+**********************************************************************
+* Tabela Interna
+**********************************************************************
+DATA: TI_USER TYPE TABLE OF TY_USER,
+      TI_BDC  TYPE TABLE OF BDCDATA,
+      TI_MSG  TYPE TABLE OF BDCMSGCOLL.
+_________________________________________________________________________________
