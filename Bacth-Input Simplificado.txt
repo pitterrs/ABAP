@@ -1,0 +1,54 @@
+*&---------------------------------------------------------------------*
+*& Report  ZBATCHINPUT_PITTER
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT ZBATCHINPUT_PITTER.
+
+
+
+*Tela de seleção
+SELECTION-SCREEN BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-001.
+PARAMETERS P_CAT TYPE C LENGTH 20.
+SELECTION-SCREEN END OF BLOCK B1.
+
+*tipos
+DATA WA_BDCDATA TYPE BDCDATA.
+DATA IT_BDCDATA TYPE TABLE OF BDCDATA.
+DATA OPT TYPE CTU_PARAMS.
+
+**********************************************************************
+*Ações
+**********************************************************************
+
+*Entra no Programa/Transação
+CLEAR WA_BDCDATA.
+WA_BDCDATA-PROGRAM  = 'SAPLSD_ENTRY'. "Nome do Programa
+WA_BDCDATA-DYNPRO   = '1000'. "Tela do Programa
+WA_BDCDATA-DYNBEGIN = 'X'. "Editar X=Sim
+APPEND WA_BDCDATA TO IT_BDCDATA.
+
+*Seleciona a opção desejada
+CLEAR WA_BDCDATA.
+WA_BDCDATA-FNAM  = 'RSRD1-DDTYPE'. "Nome do Botão de Radio desejado
+WA_BDCDATA-FVAL   = 'X'. "Seleciona o botão
+APPEND WA_BDCDATA TO IT_BDCDATA.
+
+*Insere o valor digitado no Campo
+CLEAR WA_BDCDATA.
+WA_BDCDATA-FNAM  = 'RSRD1-DDTYPE_VAL'. "Nome do Campo selecionado
+WA_BDCDATA-FVAL   = P_CAT. "Nome do campo de onde vem o valor preenchido
+APPEND WA_BDCDATA TO IT_BDCDATA.
+
+*Executa a seleção feita
+CLEAR WA_BDCDATA.
+WA_BDCDATA-FNAM  = 'BDC_OKCODE'. "SIGINIFICA 'ENTER' OU CLIQUE DE SELEÇÃO
+WA_BDCDATA-FVAL   = 'WB_DISPLAY'. "Nome do botão a ser clicado
+APPEND WA_BDCDATA TO IT_BDCDATA.
+
+OPT-DISMODE = 'E'.
+
+*Transação a ser executada toda a ação programada
+CALL TRANSACTION 'SE11' USING IT_BDCDATA OPTIONS FROM OPT.
