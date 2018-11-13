@@ -1,0 +1,130 @@
+*&---------------------------------------------------------------------*
+*& Report  ZBAPI_PITTER
+*&
+*&---------------------------------------------------------------------*
+*& Descrição: Programa de BAPI
+*& Autor: Pitter Rezende da Silva
+*&---------------------------------------------------------------------*
+REPORT ZBAPI_PITTER.
+
+
+INCLUDE zbapi_pitter_top.
+
+
+
+**********************************************************************
+* Tela de Seleção
+**********************************************************************
+SELECTION-SCREEN BEGIN OF BLOCK Z1 WITH FRAME TITLE TEXT-001.
+PARAMETERS P_FILE TYPE STRING.
+SELECTION-SCREEN END OF BLOCK Z1.
+
+**********************************************************************
+* Tela de seleção - Event
+**********************************************************************
+
+*Cria o Matchcode para seleção
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+
+*Função para Localizar um arquivo no windows
+  CALL FUNCTION 'GUI_FILE_LOAD_DIALOG'
+    EXPORTING
+      WINDOW_TITLE      = 'Usuário'
+      DEFAULT_EXTENSION = 'CSV'
+      DEFAULT_FILE_NAME = P_FILE
+    IMPORTING
+      FULLPATH          = P_FILE.
+
+*&---------------------------------------------------------------------*
+*&      EVENTO
+*&---------------------------------------------------------------------*
+
+START-OF-SELECTION.
+
+  PERFORM F_CARREGA_ARQUIVO.
+  PERFORM F_PROCESSA_DADOS.
+*&---------------------------------------------------------------------*
+*&      Form  F_CARREGA_ARQUIVO
+*&---------------------------------------------------------------------*
+
+FORM F_CARREGA_ARQUIVO.
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      FILENAME                = P_FILE
+    TABLES
+      DATA_TAB                = TI_USER1
+    EXCEPTIONS
+      FILE_OPEN_ERROR         = 1
+      FILE_READ_ERROR         = 2
+      NO_BATCH                = 3
+      GUI_REFUSE_FILETRANSFER = 4
+      INVALID_TYPE            = 5
+      NO_AUTHORITY            = 6
+      UNKNOWN_ERROR           = 7
+      BAD_DATA_FORMAT         = 8
+      HEADER_NOT_ALLOWED      = 9
+      SEPARATOR_NOT_ALLOWED   = 10
+      HEADER_TOO_LONG         = 11
+      UNKNOWN_DP_ERROR        = 12
+      ACCESS_DENIED           = 13
+      DP_OUT_OF_MEMORY        = 14
+      DISK_FULL               = 15
+      DP_TIMEOUT              = 16
+      OTHERS                  = 17.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE 'Erro ao carregar o Arquivo'(002) TYPE 'I'.
+    STOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_PROCESSA_DADOS
+*&---------------------------------------------------------------------*
+*       Processa dados
+*----------------------------------------------------------------------*
+FORM F_PROCESSA_DADOS .
+
+LOOP AT TI_USER1 INTO WA_USER1.
+
+*Quebrar linha em arquivo CSV
+  SPLIT WA_USER1-LINE AT ';' INTO WA_USER-USUARIO
+                                  WA_USER-DEPTO.
+
+
+  WA_ADDRESS-DEPARTMENT = WA_USER-DEPTO.
+  WA_ADDRESSX-DEPARTMENT = 'X'.
+
+CALL FUNCTION 'BAPI_USER_CHANGE'
+  EXPORTING
+    USERNAME                 = WA_USER-USUARIO
+    ADDRESS                  = WA_ADDRESS
+    ADDRESSX                 = WA_ADDRESSX
+  TABLES
+    RETURN                   = TI_RETURN.
+
+
+**********************************************************************
+*Log de Retorno
+**********************************************************************
+
+  READ TABLE TI_RETURN INTO WA_RETURN INDEX 1.
+
+  IF WA_RETURN-TYPE = 'S'.
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+     EXPORTING
+       WAIT          = 'X'.
+
+    WRITE: /3 ICON_GREEN_LIGHT AS ICON,
+              WA_RETURN-MESSAGE(100).
+
+    ELSE.
+      WRITE: /3 ICON_RED_LIGHT AS ICON,
+                WA_RETURN-MESSAGE(100).
+  ENDIF.
+
+
+ENDLOOP.
+
+ENDFORM.
