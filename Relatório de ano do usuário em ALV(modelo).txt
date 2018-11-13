@@ -1,0 +1,129 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZCOMPRAS_PITTERRS_TOP
+*&---------------------------------------------------------------------*
+
+TABLES: USR41_MLD.
+
+**********************************************************************
+* ESTRUTURA
+**********************************************************************
+TYPES: BEGIN OF TY_USERSAP,
+        BNAME    TYPE USR41_MLD-BNAME,
+        CAL_YEAR TYPE USR41_MLD-CAL_YEAR,
+       END OF TY_USERSAP.
+
+
+**********************************************************************
+* WORDAREA
+**********************************************************************
+DATA:  WA_USERSAP  TYPE TY_USERSAP,
+       WA_ALV      TYPE TY_USERSAP,
+       WA_FIELDCAT TYPE SLIS_FIELDCAT_ALV.
+
+**********************************************************************
+* TABELA INTERNA
+**********************************************************************
+DATA:  TI_USERSAP TYPE TABLE OF TY_USERSAP,
+       TI_ALV     TYPE TABLE OF TY_USERSAP,
+       TI_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
+
+________________________________________________________________________
+
+*&---------------------------------------------------------------------*
+*& Report  ZCOMPRAS_ALV_PITTER_01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT ZCOMPRAS_ALV_PITTER_01.
+
+INCLUDE ZCOMPRAS_PITTERRS_TOP.
+
+**********************************************************************
+* TELA DE SELEÇÃO
+**********************************************************************
+SELECTION-SCREEN BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-001.
+*PARAMETERS P_BNAME    TYPE USR41_MLD-BNAME.
+SELECT-OPTIONS S_BNAME FOR USR41_MLD-BNAME.
+*PARAMETERS CAL_YEAR TYPE USR41_MLD-CAL_YEAR.
+SELECTION-SCREEN END   OF BLOCK B1.
+
+
+PERFORM SELECIONA_DADOS.
+PERFORM IMPRIME_DADOS.
+PERFORM EXIBE_DADOS.
+*&---------------------------------------------------------------------*
+*&      Form  SELECIONA_DADOS
+*&---------------------------------------------------------------------*
+*       SELEÇÃO DE DADOS
+*----------------------------------------------------------------------*
+START-OF-SELECTION.
+
+FORM SELECIONA_DADOS.
+
+  SELECT BNAME
+         CAL_YEAR
+         FROM USR41_MLD
+         INTO TABLE TI_USERSAP
+         WHERE BNAME = S_BNAME.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  IMPRIME_DADOS
+*&---------------------------------------------------------------------*
+*       IMPRIME OS DADOS SELECIONADOS
+*----------------------------------------------------------------------*
+FORM IMPRIME_DADOS.
+
+  LOOP AT TI_USERSAP INTO WA_USERSAP.
+
+    WA_ALV-BNAME    = WA_USERSAP-BNAME.
+    WA_ALV-CAL_YEAR = WA_USERSAP-CAL_YEAR.
+    APPEND WA_ALV TO TI_ALV.
+
+  ENDLOOP.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  EXIBE_DADOS
+*&---------------------------------------------------------------------*
+*       EXIBE OS DADOS EM ALV
+*----------------------------------------------------------------------*
+FORM EXIBE_DADOS .
+
+  REFRESH TI_FIELDCAT.
+
+  WA_FIELDCAT-COL_POS = 1.
+  WA_FIELDCAT-TABNAME = 'TI_ALV'.
+  wa_fieldcat-fieldname = 'BNAME'.
+  wa_fieldcat-outputlen = 16.
+  wa_fieldcat-seltext_L = 'CHAVE DO USUÁRIO'.
+  APPEND wa_fieldcat TO ti_fieldcat.
+
+  WA_FIELDCAT-COL_POS = 2.
+  WA_FIELDCAT-TABNAME = 'TI_ALV'.
+  wa_fieldcat-fieldname = 'CAL_YEAR'.
+  wa_fieldcat-outputlen = 09.
+  wa_fieldcat-seltext_L = 'CRIADO EM'.
+  APPEND wa_fieldcat TO ti_fieldcat.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+*     IS_LAYOUT                         =
+     IT_FIELDCAT                       = TI_FIELDCAT
+    TABLES
+      T_OUTTAB                          = TI_ALV
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2.
+  IF SY-SUBRC <> 0.
+*ADASDASDAS
+  ENDIF.
+
+
+
+ENDFORM.
