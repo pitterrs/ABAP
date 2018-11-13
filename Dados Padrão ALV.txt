@@ -1,0 +1,21 @@
+*Declarações padrão do tipo ALV
+
+*Wordarea
+	WA_ALV      TYPE TY_USERSAP,
+        WA_FIELDCAT TYPE SLIS_FIELDCAT_ALV.
+
+*Tabela Interna
+	TI_ALV     TYPE TABLE OF TY_USERSAP,
+        TI_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
+
+
+
+*Campos de exibição
+REFRESH TI_FIELDCAT. "Não necessário repetir
+
+  WA_FIELDCAT-COL_POS = 1. "Posição da coluna
+  WA_FIELDCAT-TABNAME = 'TI_ALV'. "Tabela de saída
+  wa_fieldcat-fieldname = 'BNAME'. "Nome do Campo da seleção
+  wa_fieldcat-outputlen = 16. "Quantas posições é a coluna
+  wa_fieldcat-seltext_L = 'CHAVE DO USUÁRIO'. "Nome da coluna
+  APPEND wa_fieldcat TO ti_fieldcat. "Joga os dados para a tabela interna de fieldcat
