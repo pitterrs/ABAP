@@ -1,0 +1,208 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZTIPOS_PITTER_TOP
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*&  Tabelas
+*&---------------------------------------------------------------------*
+
+TABLES: ZJOGADOR_PITTER,
+        ZTIME_PITTER.
+
+
+**********************************************************************
+*         Estruturas
+**********************************************************************
+
+TYPES: BEGIN OF TY_JOGATIME,
+         NOME          TYPE ZJOGADOR_PITTER-NOME,
+         NICK          TYPE ZJOGADOR_PITTER-NICK,
+         IDADE         TYPE ZJOGADOR_PITTER-IDADE,
+         NACIONALIDADE TYPE ZJOGADOR_PITTER-NACIONALIDADE,
+         GAME          TYPE ZJOGADOR_PITTER-GAME,
+         TIME          TYPE ZTIME_PITTER-TIME,
+         TAG           TYPE ZTIME_PITTER-TIME,
+       END OF TY_JOGATIME.
+
+**********************************************************************
+* Workarea
+**********************************************************************
+DATA: WA_JOGATIME TYPE TY_JOGATIME,
+      WA_ALV      TYPE TY_JOGATIME,
+      WA_FIELDCAT TYPE SLIS_FIELDCAT_ALV.
+
+**********************************************************************
+* Tabela interna
+**********************************************************************
+DATA: TI_JOGATIME TYPE TABLE OF TY_JOGATIME,
+      TI_ALV      TYPE TABLE OF TY_JOGATIME,
+      TI_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV,
+      WA_LAYOUT   TYPE SLIS_LAYOUT_ALV.
+*      S_LAYOUT    TYPE SLIS_LAYOUT_ALV.
+
+_________________________________________________________________________
+_________________________________________________________________________
+_________________________________________________________________________
+*&---------------------------------------------------------------------*
+*& Report  ZJOGATIME_PITTER
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT ZJOGATIME_PITTER.
+
+
+INCLUDE ZTIPOS_PITTER_TOP.
+
+*&---------------------------------------------------------------------*
+*& Tela de seleção
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-001.
+SELECT-OPTIONS S_NOME FOR ZJOGADOR_PITTER-NOME.
+SELECT-OPTIONS S_NICK FOR ZJOGADOR_PITTER-NICK.
+SELECT-OPTIONS S_TIME FOR ZTIME_PITTER-TIME.
+SELECTION-SCREEN END OF BLOCK B1.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK B2 WITH FRAME TITLE TEXT-002.
+PARAMETERS P_WRITE RADIOBUTTON GROUP GR1.
+PARAMETERS P_ALV RADIOBUTTON GROUP GR1.
+SELECTION-SCREEN END OF BLOCK B2.
+
+
+
+*&---------------------------------------------------------------------*
+*& Start-of-Selection
+*&---------------------------------------------------------------------*
+START-OF-SELECTION.
+
+  PERFORM SELECIONA_DADOS.
+  PERFORM LAYOUT.
+  PERFORM EXIBIR_ALV.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  SELECIONA_DADOS
+*&---------------------------------------------------------------------*
+FORM SELECIONA_DADOS.
+  IF S_NOME IS NOT INITIAL.
+    SELECT   ZJOGADOR_PITTER~NOME
+             ZJOGADOR_PITTER~NICK
+             ZJOGADOR_PITTER~IDADE
+             ZJOGADOR_PITTER~NACIONALIDADE
+             ZJOGADOR_PITTER~GAME
+             ZTIME_PITTER~TIME
+             ZTIME_PITTER~TAG
+             FROM ZJOGADOR_PITTER
+             INNER JOIN ZTIME_PITTER
+             ON ZTIME_PITTER~TIME = ZJOGADOR_PITTER~TIME
+             INTO TABLE TI_JOGATIME
+             WHERE ZTIME_PITTER~TIME IN S_TIME AND
+             ZJOGADOR_PITTER~NOME IN S_NOME AND
+             ZJOGADOR_PITTER~NICK IN S_NICK.
+
+      SORT TI_JOGATIME BY NOME.
+  ELSE.
+    SELECT ZJOGADOR_PITTER~NOME
+           ZJOGADOR_PITTER~NICK
+           ZJOGADOR_PITTER~IDADE
+           ZJOGADOR_PITTER~NACIONALIDADE
+           ZJOGADOR_PITTER~GAME
+           ZTIME_PITTER~TIME
+           ZTIME_PITTER~TAG
+           FROM ZJOGADOR_PITTER
+           INNER JOIN ZTIME_PITTER
+           ON ZTIME_PITTER~TIME = ZJOGADOR_PITTER~TIME
+           INTO TABLE TI_JOGATIME
+           WHERE ZTIME_PITTER~TIME IN S_TIME AND
+           ZJOGADOR_PITTER~NOME IN S_NOME AND
+           ZJOGADOR_PITTER~NICK IN S_NICK.
+
+      SORT TI_JOGATIME BY NOME.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  MONTAR_CAMPOS
+*&---------------------------------------------------------------------*
+
+FORM MONTAR_CAMPOS USING FIELDNAME
+                         SELTEXT_M
+                         CHECKBOX
+                         EDIT
+                         COL_POS.
+  WA_FIELDCAT-FIELDNAME = FIELDNAME.
+  WA_FIELDCAT-SELTEXT_M = SELTEXT_M.
+  WA_FIELDCAT-CHECKBOX = CHECKBOX.
+  WA_FIELDCAT-EDIT = EDIT.
+  WA_FIELDCAT-COL_POS = COL_POS.
+  APPEND WA_FIELDCAT TO TI_FIELDCAT.
+  CLEAR WA_FIELDCAT.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  LAYOUT
+*&---------------------------------------------------------------------*
+FORM LAYOUT .
+  WA_LAYOUT-ZEBRA = 'X'.
+  WA_LAYOUT-COLWIDTH_OPTIMIZE = 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  EXIBIR_ALV
+*&---------------------------------------------------------------------*
+FORM EXIBIR_ALV .
+IF P_ALV = 'X'.
+  PERFORM MONTAR_CAMPOS USING:
+          'NOME' 'Nome' ' ' ' ' 0,
+          'NICK' 'Nick' ' ' ' ' 1,
+          'IDADE' 'Idade' ' ' ' ' 2,
+          'NACIONALIDADE' 'Nac.' ' ' ' ' 3,
+          'TIME' 'Time' ' ' ' ' 4,
+          'TAG' 'TAG' ' ' ' ' 5,
+          'GAME' 'Game' ' ' ' ' 6.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      I_CALLBACK_PROGRAM = 'SY-REPID'
+      I_GRID_TITLE       = 'Jogador e seu Time'
+      IS_LAYOUT          = WA_LAYOUT
+      IT_FIELDCAT        = TI_FIELDCAT
+    TABLES
+      T_OUTTAB           = TI_JOGATIME
+    EXCEPTIONS
+      PROGRAM_ERROR      = 1
+      OTHERS             = 2.
+  IF SY-SUBRC <> 0.
+    MESSAGE 'Erro no programa'(001) TYPE 'I'.
+  ENDIF.
+
+ELSE.
+  ULINE 1(84).
+  FORMAT COLOR 5.
+  WRITE: / '|', (15) :'Nome', '|',
+         (10):'Nick', '|',
+         (5):'Idade', '|',
+         (5):'Nac.', '|',
+         (15):'Time', '|',
+         (5):'TAG', '|',
+         (7):'Game', '|'.
+ULINE /1(84).
+FORMAT COLOR 4.
+  LOOP AT TI_JOGATIME INTO WA_JOGATIME.
+    WRITE: / '|', (15): WA_JOGATIME-NOME,
+             '|', (10):WA_JOGATIME-NICK,
+             '|', (5):WA_JOGATIME-IDADE,
+             '|', (5):WA_JOGATIME-NACIONALIDADE,
+             '|', (15):WA_JOGATIME-TIME,
+             '|', (5):WA_JOGATIME-TAG,
+             '|', (7):WA_JOGATIME-GAME, '|'.
+    ULINE /1(84).
+  ENDLOOP.
+
+
+ENDIF.
+
+
+
+ENDFORM.
