@@ -19,3 +19,31 @@ REFRESH TI_FIELDCAT. "Não necessário repetir
   wa_fieldcat-outputlen = 16. "Quantas posições é a coluna
   wa_fieldcat-seltext_L = 'CHAVE DO USUÁRIO'. "Nome da coluna
   APPEND wa_fieldcat TO ti_fieldcat. "Joga os dados para a tabela interna de fieldcat
+
+
+*Campos de exibição ALV padrão 2
+*Criar um PERFORM MONTAR_CAMPOS e colocar o USING da forma que está abaixo
+PERFORM MONTAR_CAMPOS USING:
+          'NOME' 'Nome' ' ' ' ' 0,
+          'NICK' 'Nick' ' ' ' ' 1,
+          'IDADE' 'Idade' ' ' ' ' 2,
+          'NACIONALIDADE' 'Nac.' ' ' ' ' 3,
+          'TIME' 'Time' ' ' ' ' 4,
+          'TAG' 'TAG' ' ' ' ' 5,
+          'GAME' 'Game' ' ' ' ' 6.
+
+*Dentro do FORM colocar os parametros abaixo
+*dentro deste FORM deve vir a função do ALV após os dadso abaixo
+FORM MONTAR_CAMPOS USING FIELDNAME
+                         SELTEXT_M
+                         CHECKBOX
+                         EDIT
+                         COL_POS.
+  WA_FIELDCAT-FIELDNAME = FIELDNAME.
+  WA_FIELDCAT-SELTEXT_M = SELTEXT_M.
+  WA_FIELDCAT-CHECKBOX = CHECKBOX.
+  WA_FIELDCAT-EDIT = EDIT.
+  WA_FIELDCAT-COL_POS = COL_POS.
+  APPEND WA_FIELDCAT TO TI_FIELDCAT.
+  CLEAR WA_FIELDCAT.
+ENDFORM.
