@@ -8,8 +8,7 @@ http://abap101.com/
   
 Tipos de Dados Padrão ABAP  
   
-i –  integer 4 byte número inteiro + / – 2,1 bilhões  
-f –  floar 8 bytes, 15-16 dígitos significativos  
+*i –  integer 4 byte número inteiro + / – 2,1 bilhões *f –  floar 8 bytes, 15-16 dígitos significativos  
 c – string de até 65 mil caracteres  
 n – numeric string até 65 mil caracteres (número não-matemático)  
 string – de comprimento dinâmico até 2 GB de comprimento!  
