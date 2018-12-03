@@ -1,0 +1,18 @@
+ULINE 1(76). "Cabeçalho do relatório
+    FORMAT COLOR 5.
+    WRITE: / '|', (15) :'Carro', '|',
+           (5):'Ano', '|',
+           (5):'Valor', '|',
+           (10):'Tipo', '|',
+           (12):'Fabricante', '|',
+           (10):'País', '|'.
+    ULINE /1(76).
+    FORMAT COLOR 4.
+    LOOP AT TI_FABCAR INTO WA_FABCAR. "Dados do Relatório
+      WRITE: / '|', (15): WA_FABCAR-CARRO,
+               '|', (5):WA_FABCAR-ANO,
+               '|', (5):WA_FABCAR-VALOR,
+               '|', (10):WA_FABCAR-TIPO,
+               '|', (12):WA_FABCAR-FABRICANTE,
+               '|', (10):WA_FABCAR-PAIS, '|'.
+      ULINE /1(76).
