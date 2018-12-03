@@ -18,3 +18,9 @@ http://abap101.com/
 * d –  *Data 8 caracteres de formato AAAAMMDD*  
 * t –  *tempo 6 caracteres de HHMMSS*  
 * p  – *packed number preciso ou número flutuante de até 16 bytes*  
+  
+  
+  
+  ### Canal Youtube com conteúdos de ABAP em PT-BR  
+    
+https://www.youtube.com/user/SonikroTutorials
