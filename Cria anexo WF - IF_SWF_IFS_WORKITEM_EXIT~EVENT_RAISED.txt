@@ -1,0 +1,297 @@
+CONSTANTS: lc_bseg   TYPE char20 VALUE 'CHAVE_REF'.
+    CONSTANTS: lc_attach_s TYPE string VALUE 'VALUE-NFSE-ANEXOS'.
+
+    DATA: lv_wihead        TYPE swr_wihdr,
+          lv_id            TYPE sww_wiid,
+          gt_container     TYPE STANDARD TABLE OF  swr_cont,
+          wa_container     TYPE swr_cont,
+          lv_ref           TYPE bkpf-awkey,
+          lv_container     TYPE REF TO if_swf_ifs_parameter_container,
+          lv_attach        TYPE TABLE OF obj_record,
+          lv_folder_id     TYPE soodk,
+          lv_valor         TYPE zct_paramval-param1,
+          l_id             TYPE string,
+          l_json           TYPE string,
+          i_attachid       TYPE string,
+          i_attachname     TYPE string,
+          l_b64data        TYPE string,
+          g_xxml           TYPE xstring,
+          g_len            TYPE i,
+          gt_bindata       TYPE TABLE OF x255,
+          g_xml            TYPE string,
+          it_solix_tab1    TYPE solix_tab,
+          lv_data          TYPE sodocchgi1,
+          lv_tab_lines     TYPE sy-tabix,
+          wa_document_info TYPE sofolenti1,
+          lv_objtype       TYPE swotobjid-objtype,
+          lv_objkey        TYPE swotobjid-objkey,
+          lv_sofm          TYPE swotrtime-object,
+          lv_return        TYPE swotreturn,
+          lv_object        TYPE obj_record,
+          tb_obj           TYPE TABLE OF obj_record.
+
+    DATA: go_cl_bf TYPE REF TO /FHEFI/IF_BF,
+          go_data  TYPE REF TO data,
+          lw_tab   TYPE REF TO data,
+          l_json2   TYPE string,
+          l_data2   TYPE REF TO data.
+
+    FIELD-SYMBOLS: <lfsw_nf>  TYPE any,
+                   <fs_comp>  TYPE ANY TABLE,
+                   <lfsw_attc> TYPE any,
+                   <lfs_fld>   TYPE any,
+                   <lfs_fld2>   TYPE any,
+                   <lfsw_attach> TYPE any,
+                   <lfs_any>     TYPE any,
+                   <lfs_attach> TYPE any.
+
+    CALL METHOD im_workitem_context->get_header
+      RECEIVING
+        re_workitem_header = lv_wihead.
+
+    CALL METHOD im_workitem_context->get_workitem_id
+      RECEIVING
+        re_workitem = lv_id.
+
+    CALL FUNCTION 'SAP_WAPI_READ_CONTAINER'
+      EXPORTING
+        workitem_id      = lv_wihead-wi_id
+        language         = sy-langu
+        user             = sy-uname
+      TABLES
+        simple_container = gt_container.
+
+    DELETE gt_container WHERE element NE lc_bseg.
+
+    READ TABLE gt_container INTO wa_container WITH KEY element = lc_bseg.
+    IF sy-subrc IS INITIAL.
+      lv_ref =  wa_container-value.
+    ENDIF.
+
+  IF lv_ref IS NOT INITIAL.
+    SELECT SINGLE bktxt
+      FROM rbkp
+      INTO @data(l_nfref)
+      WHERE belnr = @lv_ref(10)
+        AND gjahr = @lv_ref+10.
+
+
+    IF l_nfref IS NOT INITIAL.
+      SELECT SINGLE nfextid
+        FROM /fhefi/fd
+        INTO @DATA(lv_idex)
+        WHERE nfenum = @l_nfref.
+
+
+      CALL METHOD im_workitem_context->get_wi_container
+        RECEIVING
+          re_container = lv_container.
+
+
+      CLEAR lv_attach.
+      TRY.
+          CALL METHOD lv_container->get
+            EXPORTING
+              name  = '_ATTACH_OBJECTS'
+            IMPORTING
+              value = lv_attach.
+
+         CATCH: cx_swf_cnt_elem_not_found,
+
+                cx_swf_cnt_elem_type_conflict,
+
+                cx_swf_cnt_unit_type_conflict,
+                  cx_swf_cnt_container.
+
+      ENDTRY.
+
+      IF lv_attach IS INITIAL.
+
+        CALL FUNCTION 'SO_FOLDER_ROOT_ID_GET'
+          EXPORTING
+            owner     = sy-uname
+            region    = 'B'
+          IMPORTING
+            folder_id = lv_folder_id.
+
+        IF NOT lv_folder_id IS INITIAL.
+
+          IF go_cl_bf IS NOT BOUND.
+            CALL METHOD /fhefi/cl_badi_handler=>get_inbound
+              EXPORTING
+                i_obj_type = '0'
+                i_oa2_inb  = 'FHEFIS'
+              IMPORTING
+*               e_classe   =     " Nome de tipo de objeto
+                e_objeto   = go_cl_bf    " Business Functionalities - Interface
+              EXCEPTIONS
+                erro       = 1
+                OTHERS     = 2.
+            IF sy-subrc <> 0.
+              MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+                         WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+            ENDIF.
+
+          ENDIF.
+
+          l_id = lv_idex.
+          CONCATENATE '(' l_id ')' INTO l_id.
+          CONDENSE l_id NO-GAPS.
+
+          " Recupera os dados da nota
+          CALL METHOD go_cl_bf->get_nfs_compl(
+          EXPORTING
+            i_url_compl    = l_id
+          IMPORTING
+            e_data         = go_data
+            e_json_out     = l_json
+          EXCEPTIONS
+            missing_config = 1
+            OTHERS         = 2
+          ).
+
+          ASSIGN go_data->* TO <lfsw_nf>.
+          CHECK <lfsw_nf> IS ASSIGNED.
+          ASSIGN COMPONENT lc_attach_s OF STRUCTURE <lfsw_nf> TO <fs_comp>.
+          IF <fs_comp> IS ASSIGNED.
+            CREATE DATA lw_tab LIKE LINE OF <fs_comp>.
+            ASSIGN lw_tab->* TO <lfsw_attc>.
+          ENDIF.
+
+          LOOP AT <fs_comp> INTO <lfsw_attc>.
+            ASSIGN COMPONENT 'NOME' OF STRUCTURE <lfsw_attc> TO <lfs_fld>.
+            ASSIGN COMPONENT 'REGISTROID' OF STRUCTURE <lfsw_attc> TO <lfs_fld2>.
+          ENDLOOP.
+
+          IF <lfs_fld> IS NOT INITIAL AND <lfs_fld2> IS NOT INITIAL.
+
+            i_attachid   = <lfs_fld2>.
+            i_attachname = <lfs_fld>.
+
+            go_cl_bf->get_nfs_attachment(
+            EXPORTING
+              i_nfextid    = lv_idex
+              i_attachid   = i_attachid
+              i_attachname = i_attachname
+            IMPORTING
+              e_data       = l_data2
+              e_json_out   = l_json2
+              ).
+
+            ASSIGN l_data2->* TO <lfsw_attach>.
+
+            ASSIGN COMPONENT 'VALUE' OF STRUCTURE <lfsw_attach> TO <lfs_any>.
+            ASSIGN COMPONENT 'CONTEUDO' OF STRUCTURE <lfs_any> TO <lfs_attach>.
+
+            l_b64data = <lfs_attach>.
+
+            CALL FUNCTION 'SSFC_BASE64_DECODE'
+              EXPORTING
+                b64data                  = l_b64data
+              IMPORTING
+                bindata                  = g_xxml
+              EXCEPTIONS
+                ssf_krn_error            = 1
+                ssf_krn_noop             = 2
+                ssf_krn_nomemory         = 3
+                ssf_krn_opinv            = 4
+                ssf_krn_input_data_error = 5
+                ssf_krn_invalid_par      = 6
+                ssf_krn_invalid_parlen   = 7
+                OTHERS                   = 8.
+            IF sy-subrc <> 0.
+              "RAISE conv_error.
+            ENDIF.
+
+            CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'
+              EXPORTING
+                buffer        = g_xxml
+              IMPORTING
+                output_length = g_len
+              TABLES
+                binary_tab    = gt_bindata.
+
+            CALL FUNCTION 'SCMS_BINARY_TO_STRING'
+              EXPORTING
+                input_length = g_len
+              IMPORTING
+                text_buffer  = g_xml
+              TABLES
+                binary_tab   = gt_bindata
+              EXCEPTIONS
+                failed       = 1
+                OTHERS       = 2.
+            IF sy-subrc <> 0.
+              "RAISE conv_error.
+            ENDIF.
+
+            it_solix_tab1 = cl_document_bcs=>xstring_to_solix( g_xxml ).
+
+            DESCRIBE TABLE it_solix_tab1 LINES lv_tab_lines.
+
+            lv_data-obj_name = 'ANEXO_ECG'.
+            lv_data-obj_descr  = 'Anexo ECG'.
+            lv_data-obj_langu  = sy-langu.
+            lv_data-sensitivty = 'P'.
+            lv_data-doc_size   = lv_tab_lines * 255.
+
+            CALL FUNCTION 'SO_DOCUMENT_INSERT_API1'
+              EXPORTING
+                folder_id                  = lv_folder_id
+                document_data              = lv_data
+                document_type              = 'PDF'
+              IMPORTING
+                document_info              = wa_document_info
+              TABLES
+                contents_hex               = it_solix_tab1
+              EXCEPTIONS
+                folder_not_exist           = 1
+                document_type_not_exist    = 2
+                operation_no_authorization = 3
+                parameter_error            = 4
+                x_error                    = 5
+                enqueue_error              = 6
+                OTHERS                     = 7.
+
+
+            lv_objtype = 'SOFM'.
+            lv_objkey  = wa_document_info-doc_id.
+
+            CALL FUNCTION 'SWO_CREATE'
+              EXPORTING
+                objtype           = lv_objtype
+                objkey            = lv_objkey
+              IMPORTING
+                object            = lv_sofm
+                return            = lv_return
+              EXCEPTIONS
+                no_remote_objects = 1
+                OTHERS            = 2.
+
+            lv_object-header  = 'OBJH'.
+            lv_object-type    = 'SWO'.
+            lv_object-handle  = lv_sofm.
+            APPEND lv_object TO tb_obj.
+
+            TRY.
+                 CALL METHOD lv_container->set
+                   EXPORTING
+                     name  = '_ATTACH_OBJECTS'
+                     value = tb_obj[].
+
+                CATCH cx_swf_cnt_cont_access_denied.
+                CATCH cx_swf_cnt_container.
+
+            ENDTRY.
+
+
+            CALL METHOD im_workitem_context->do_commit_work.
+
+          ENDIF.
+       ENDIF.
+
+      ENDIF.
+
+    ENDIF.
+
+ENDIF.
