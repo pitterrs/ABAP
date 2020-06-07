@@ -1,0 +1,1083 @@
+*&---------------------------------------------------------------------*
+*& Report Z_ECG_POCREATE
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT Z_ECG_POCREATE.
+
+INCLUDE Z_ECG_POCREATETOP.
+
+  DATA: IT_FLIGHT TYPE TABLE OF TY_DADOS.
+  DATA: DYNFIELDS TYPE TABLE OF DYNPREAD WITH HEADER LINE.
+  DATA: l_id           TYPE string,
+        l_json         TYPE string.
+
+  DATA: ls_edit TYPE lvc_s_styl,
+        lt_edit TYPE lvc_t_styl.
+
+SELECTION-SCREEN BEGIN OF BLOCK B1  WITH FRAME TITLE TEXT-001.
+  SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE text-002.
+    SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(10) text-003 FOR FIELD p_req.
+    PARAMETERS: p_req TYPE EBAN-BANFN.
+    SELECTION-SCREEN COMMENT 31(5) text-004 FOR FIELD p_itm.
+    PARAMETERS: p_itm TYPE EBAN-BNFPO.
+    SELECTION-SCREEN END OF LINE.
+    SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(10) text-003 FOR FIELD p_req.
+    PARAMETERS: p_req2 TYPE EBAN-BANFN.
+    SELECTION-SCREEN COMMENT 31(5) text-004 FOR FIELD p_itm.
+    PARAMETERS: p_itm2 TYPE EBAN-BNFPO.
+    SELECTION-SCREEN END OF LINE.
+    SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(10) text-003 FOR FIELD p_req.
+    PARAMETERS: p_req3 TYPE EBAN-BANFN.
+    SELECTION-SCREEN COMMENT 31(5) text-004 FOR FIELD p_itm.
+    PARAMETERS: p_itm3 TYPE EBAN-BNFPO.
+    SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN END OF BLOCK b2.
+
+PARAMETERS: p_bukrs TYPE ekko-bukrs,
+            p_bsart TYPE ekko-bsart DEFAULT 'NB',
+            p_lifnr TYPE ekko-lifnr,
+            p_ekorg TYPE ekko-ekorg,
+            p_ekgrp TYPE ekko-ekgrp,
+            p_BPRME TYPE ekpo-bprme DEFAULT '1',
+            p_INDUST TYPE ekpo-j_1bindust,
+            p_matorg TYPE EKPO-J_1BMATORG,
+            p_matuse TYPE EKPO-J_1BMATUSE,
+            p_ncm    TYPE EKPO-J_1BNBM,
+            p_kntt  TYPE EKPO-KNTTP,
+            p_MATKL TYPE EKPO-MATKL,
+            p_matnr TYPE EKPO-MATNR,
+            p_werks TYPE EKPO-WERKS,
+            p_meins TYPE EKPO-MEINS DEFAULT 'UN',
+            p_menge TYPE EKPO-MENGE DEFAULT '1',
+            p_mwskz TYPE EKPO-MWSKZ,
+            p_netpr TYPE EKPO-NETPR,
+            p_saknr TYPE ska1-saknr,
+            p_txz01 TYPE EKPO-TXZ01,
+            p_REPOS TYPE EKPO-REPOS,
+            p_webre TYPE EKPO-WEBRE,
+            p_wepos TYPE EKPO-WEPOS.
+SELECTION-SCREEN END OF BLOCK B1.
+
+
+DATA R_GRID TYPE REF TO CL_GUI_ALV_GRID.
+DATA: WA_FIELDCAT TYPE SLIS_FIELDCAT_ALV,
+      WA_LAYOUT   TYPE SLIS_LAYOUT_ALV,
+      IT_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
+
+INITIALIZATION.
+  SET PF-STATUS 'STATUS100'.
+
+  PERFORM f_init_select_screen.
+  PERFORM f_modify_screen.
+
+AT SELECTION-SCREEN.
+  ok_code = sy-ucomm.
+  IF ok_code = 'BACK' OR ok_code = 'CANCEL' OR ok_code = 'EXIT'.
+    LEAVE PROGRAM.
+  ENDIF.
+
+START-OF-SELECTION.
+
+CASE ok_code.
+  WHEN 'ONLI'.
+    PERFORM f_create_cc.
+    PERFORM f_po_create.
+    IF gv_erro IS NOT INITIAL.
+      EXIT.
+    ENDIF.
+    PERFORM MONTAR_CAMPOS.
+    PERFORM MONTAR_LAYOUT.
+    PERFORM EXIBIR_ALV.
+  WHEN 'VIEW'.
+  WHEN OTHERS.
+ENDCASE.
+
+
+FORM MONTAR_CAMPOS.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'SEL'.
+  "wa_fieldcat-tabname   = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  "wa_fieldcat-rollname = 'EBELP'.
+  wa_fieldcat-seltext_m = 'SEL'.
+  wa_fieldcat-no_out = 'X'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'ITEM'.
+  wa_fieldcat-tabname   = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'EBELP'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BUKRS'.
+  wa_fieldcat-tabname   = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'BUKRS'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'WERKS'.
+  wa_fieldcat-tabname   = 'T001W'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'EWERK'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'LIFNR'.
+  wa_fieldcat-tabname   = 'EKKO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'LIFNR'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MENGE'.
+  wa_fieldcat-tabname   = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'BSTMG'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'NETPR'.
+  wa_fieldcat-tabname   = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  "wa_fieldcat-rollname = 'NETPR'.
+  wa_fieldcat-seltext_m = 'Valor Item'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'SAKNR'.
+  wa_fieldcat-tabname   = 'SKA1'.
+  wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'SAKNR'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MEINS'.
+  wa_fieldcat-tabname   = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'MEINS'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'IVA'.
+  wa_fieldcat-tabname   = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-no_out = 'X'.
+  wa_fieldcat-rollname = 'MWSKZ'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'CC'.
+  wa_fieldcat-seltext_m = 'Cl.Contábil'.
+  wa_fieldcat-edit = 'X'.
+  "wa_fieldcat-rollname = 'MWSKZ'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'CCC'.
+  wa_fieldcat-tabname = 'EKPO'.
+  wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'KNTTP'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'NCM'.
+  wa_fieldcat-tabname = 'EKPO'.
+  wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'J_1BNBM'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MATKL'.
+  wa_fieldcat-tabname = 'EKPO'.
+  wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'MATKL'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MAKTX'.
+  wa_fieldcat-seltext_m = 'Txt.Breve'.
+  wa_fieldcat-edit = 'X'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'UTLI'.
+  wa_fieldcat-tabname = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'J_1BMATUSE'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'ORIG'.
+  wa_fieldcat-tabname = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'J_1BMATORG'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'CMAT'.
+  wa_fieldcat-tabname = 'EKPO'.
+  "wa_fieldcat-edit = 'X'.
+  wa_fieldcat-rollname = 'J_1BINDUS3'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+
+ENDFORM.
+
+
+FORM MONTAR_LAYOUT.
+  wa_layout-zebra = 'X'.
+  wa_layout-box_fieldname = 'SEL'.
+  "wa_layout-EDIT = 'X'.
+  "wa_layout-colwidth_optimize = 'X'.
+ENDFORM.
+
+
+FORM EXIBIR_ALV.
+
+  gw_field-field = 'RECORD'.
+  APPEND gw_field TO gt_field.
+  gw_field-field = 'MODIFY'.
+  APPEND gw_field TO gt_field.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      I_CALLBACK_PROGRAM = SY-REPID
+      I_GRID_TITLE       = 'Revisão/Edição de itens'
+      IS_LAYOUT          = wa_layout
+      IT_FIELDCAT        = it_fieldcat
+      I_CALLBACK_USER_COMMAND = 'USERCOMM'
+      I_CALLBACK_PF_STATUS_SET = 'ABC'
+
+    TABLES
+      T_OUTTAB           = gt_saida.
+
+ENDFORM.
+
+FORM USERCOMM  USING UCOMM TYPE SY-UCOMM
+                     SELFIELD TYPE SLIS_SELFIELD.
+
+ok_code = ucomm.
+SELFIELD-REFRESH = 'X'.
+
+CASE ok_code.
+  WHEN 'VOLTAR'.
+   LEAVE TO SCREEN 0 .
+  WHEN 'CONFIRM'.
+    PERFORM f_confirm.
+  WHEN 'MODIFY'.
+    PERFORM f_anuled.
+  WHEN 'RECORD'.
+    PERFORM f_createpo.
+  WHEN 'SIMU'.
+    vg_teste = abap_true.
+    PERFORM f_createpo.
+  ENDCASE.
+
+ENDFORM.                    "user_command
+
+FORM ABC USING EXTAB TYPE SLIS_T_EXTAB.
+  SET PF-STATUS 'STATUS200' EXCLUDING gt_field IMMEDIATELY.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_INIT_SELECT_SCREEN
+*&---------------------------------------------------------------------*
+FORM F_INIT_SELECT_SCREEN .
+
+  CONSTANTS: c_str  TYPE string VALUE 'VALUE-NFSE-INFADICIONAL'.
+
+
+  CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'EKORG'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_ekorg = e_valor.
+
+
+   "Utilização do material
+   CLEAR e_valor.
+   FREE table.
+   CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'J_1BMATUSE'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_matuse = e_valor.
+
+   "Origem material
+   CLEAR e_valor.
+   FREE table.
+   CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'ORIG.MAT'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_matorg = e_valor.
+
+   "Categoria Material
+   CLEAR e_valor.
+   FREE table.
+   CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'CTG.MAT'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_indust = e_valor.
+
+   "EM
+   CLEAR e_valor.
+   FREE table.
+   CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'EM'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_wepos = e_valor.
+
+   "Entrada de faturas
+   CLEAR e_valor.
+   FREE table.
+   CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'REPOS'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_repos  = e_valor.
+
+   "RevFatEM
+   CLEAR e_valor.
+   FREE table.
+   CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'REVFATEM'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_webre = e_valor.
+
+   "Grupo Comprador
+   CLEAR e_valor.
+   FREE table.
+   CALL FUNCTION 'ZC_PARAM'
+     EXPORTING
+       I_MODULO                  = 'MM'
+       I_PARAM1                  = 'PEDIDO'
+       I_PARAM2                  = 'ECG'
+       I_PARAM3                  = 'COMPRADOR'
+     IMPORTING
+       E_VALOR                   = e_valor
+     TABLES
+       T_RANGE                   = table.
+
+   p_ekgrp = e_valor.
+
+   IMPORT bukrs TO p_bukrs FROM MEMORY ID 'NFBUKRS'.
+   IMPORT lifnr TO p_lifnr FROM MEMORY ID 'NFLIFNR'.
+   IMPORT nfval TO p_netpr FROM MEMORY ID 'NFVAL'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_CREATE_CC
+*&---------------------------------------------------------------------*
+FORM F_CREATE_CC .
+
+IF gt_cc IS INITIAl.
+
+    CONSTANTS: c_str  TYPE string VALUE 'VALUE-NFSE-INFADICIONAL'.
+
+    "Importa o número externo da NFs
+    IMPORT nfid TO vg_nfextid FROM MEMORY ID 'NFID'.
+
+    IF go_cl_bf IS NOT BOUND.
+      CALL METHOD /fhefi/cl_badi_handler=>get_inbound
+        EXPORTING
+          i_obj_type = '0'
+          i_oa2_inb  = 'FHEFIS'
+        IMPORTING
+*       e_classe   =     " Nome de tipo de objeto
+          e_objeto   = go_cl_bf    " Business Functionalities - Interface
+        EXCEPTIONS
+          erro       = 1
+          OTHERS     = 2.
+      IF sy-subrc <> 0.
+        MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+                   WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      ENDIF.
+    ENDIF.
+
+    l_id = vg_nfextid.
+    CONCATENATE '(' l_id ')' INTO l_id.
+    CONDENSE l_id NO-GAPS.
+
+    " Recupera os dados da nota
+    CALL METHOD go_cl_bf->get_nfs_compl(
+    EXPORTING
+      i_url_compl    = l_id
+    IMPORTING
+      e_data         = go_data
+      e_json_out     = l_json
+    EXCEPTIONS
+      missing_config = 1
+      OTHERS         = 2
+    ).
+
+
+    ASSIGN go_data->* TO <lfsw_nf>.
+    CHECK <lfsw_nf> IS ASSIGNED.
+
+    ASSIGN COMPONENT c_str OF STRUCTURE <lfsw_nf> TO <fs_comp>.
+    lt_compl[] = <fs_comp>.
+    READ TABLE lt_compl INTO lw_compl INDEX 1.
+    "lw_compl-valor = 'APROP=CCHDL004065[10%]/EPI-19-00025[80%]/OI5540[10%]'.
+    SPLIT lw_compl-valor AT cl_abap_char_utilities=>NEWLINE INTO TABLE lt_compl2.
+
+    LOOP AT lt_compl2 INTO lw_compl2 WHERE valor(5) EQ 'APROP'.
+      lw_compl2 = lw_compl2+6.
+      CONDENSE lw_compl2.
+      SPLIT lw_compl2 AT '/' INTO TABLE lt_cc.
+    ENDLOOP.
+
+    LOOP AT lt_cc INTO lw_cc.
+      SPLIT lw_cc AT '[' INTO TABLE lt_cc_aux.
+      LOOP AT lt_cc_aux INTO lw_cc_aux.
+        REPLACE ALL OCCURRENCES OF '%]' IN lw_cc_aux WITH ''.
+        IF sy-subrc EQ 0 AND sy-tabix EQ 2.
+          CONDENSE lw_cc_aux.
+          gw_cc-porc = lw_cc_aux.
+          APPEND gw_cc TO gt_cc.
+          CLEAR gw_cc.
+        ENDIF.
+        gw_cc-kostl = lw_cc_aux.
+      ENDLOOP.
+      FREE lt_cc_aux.
+    ENDLOOP.
+ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_PO_CREATE
+*&---------------------------------------------------------------------*
+FORM F_PO_CREATE .
+
+TYPES: BEGIN OF ty_req,
+  req TYPE banfn,
+  itm TYPE bnfpo,
+      END OF ty_req.
+
+DATA: l_tabix TYPE sy-tabix,
+      lw_req TYPE ty_req,
+      lt_req TYPE TABLE OF ty_req.
+
+
+CLEAR: gw_cc.
+
+IF p_req IS NOT INITIAL.
+  lw_req-req = p_req.
+  lw_req-itm = p_itm.
+  APPEND lw_req TO lt_req.
+ENDIF.
+IF p_req2 IS NOT INITIAL.
+  lw_req-req = p_req2.
+  lw_req-itm = p_itm2.
+  APPEND lw_req TO lt_req.
+ENDIF.
+IF p_req3 IS NOT INITIAL.
+  lw_req-req = p_req3.
+  lw_req-itm = p_itm3.
+  APPEND lw_req TO lt_req.
+ENDIF.
+
+
+IF lt_req IS NOT INITIAL.
+  LOOP AT lt_req INTO lw_req.
+      l_tabix = sy-tabix.
+      SELECT SINGLE *
+        FROM eban
+        INTO @DATA(gw_eban)
+        WHERE banfn = @lw_req-req
+          AND bnfpo = @lw_req-itm.
+
+
+      READ TABLE gt_cc INTO gw_cc INDEX l_tabix.
+
+      CASE gw_cc-kostl(2).
+        WHEN 'CC'.
+          gw_saida-ccc = 'K'.
+          gw_saida-cc  = gw_cc-kostl+2.
+        WHEN 'OI'.
+          gw_saida-ccc = 'L'.
+          gw_saida-cc  = gw_cc-kostl+2.
+        WHEN 'EP'.
+          gw_saida-ccc = 'P'.
+          gw_saida-cc  = gw_cc-kostl+2.
+      ENDCASE.
+
+      gw_saida-item = l_tabix.
+      gw_saida-saknr = ''.
+      gw_saida-bukrs = p_bukrs.
+      gw_saida-werks = gw_eban-werks.
+      gw_saida-lifnr = p_lifnr.
+      gw_saida-menge = p_menge.
+      gw_saida-netpr = p_netpr * gw_cc-porc / 100.
+      gw_saida-meins = p_meins.
+      gw_saida-matnr = gw_eban-matnr.
+      gw_saida-matkl = gw_eban-matkl.
+      gw_saida-maktx = gw_eban-txz01.
+
+      SELECT SINGLE steuc
+       FROM marc
+       INTO gw_saida-ncm
+       WHERE matnr  = gw_saida-matnr
+         AND werks = gw_saida-werks.
+
+      gw_saida-utli = p_matuse.
+      gw_saida-orig = p_matorg.
+      gw_saida-cmat = p_indust.
+
+      APPEND gw_saida TO gt_saida.
+
+  ENDLOOP.
+ELSE.
+  "Processa os valores dos itens de acordo com a CC
+  IF gt_cc IS NOT INITIAL.
+    LOOP AT gt_cc INTO gw_cc.
+
+      gw_saida-item = sy-tabix.
+      CASE gw_cc-kostl(2).
+        WHEN 'CC'.
+          gw_saida-ccc = 'K'.
+          gw_saida-cc  = gw_cc-kostl+2.
+        WHEN 'OI'.
+          gw_saida-ccc = 'L'.
+          gw_saida-cc  = gw_cc-kostl+2.
+        WHEN 'EP'.
+          gw_saida-ccc = 'P'.
+          gw_saida-cc  = gw_cc-kostl+2.
+      ENDCASE.
+
+      gw_saida-saknr = p_saknr.
+
+      gw_saida-bukrs = p_bukrs.
+
+      IF p_werks IS NOT INITIAL.
+        gw_saida-werks = p_werks.
+      ELSE.
+        MESSAGE 'Preencher o campo Centro' TYPE 'S' DISPLAY LIKE 'E'.
+        gv_erro = 'X'.
+        EXIT.
+      ENDIF.
+
+      gw_saida-lifnr = p_lifnr.
+      gw_saida-menge = '1'.
+      gw_saida-netpr = p_netpr * gw_cc-porc / 100. "Valor do Item
+      gw_saida-meins = p_meins.
+
+      IF p_matnr IS NOT INITIAL.
+
+        gw_saida-matnr = p_matnr.
+
+        SELECT SINGLE matkl
+          FROM mara
+          INTO gw_saida-matkl
+          WHERE matnr = gw_saida-matnr.
+
+        SELECT SINGLE maktx
+          FROM makt
+          INTO gw_saida-maktx
+          WHERE matnr = gw_saida-matnr
+            AND spras = 'P'.
+
+      ELSE.
+        IF p_matkl IS INITIAL.
+          MESSAGE 'Preencher Material ou Grupo de Mercadorias' TYPE 'S' DISPLAY LIKE 'E'.
+          gv_erro = 'X'.
+          EXIT.
+        ELSE.
+          IF p_txz01 IS INITIAL.
+            MESSAGE 'Preencher Texto Breve' TYPE 'S' DISPLAY LIKE 'E'.
+            gv_erro = 'X'.
+            EXIT.
+          ELSE.
+            gw_saida-maktx = p_txz01.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+
+      IF p_ncm IS INITIAL.
+        IF p_matnr IS NOT INITIAL.
+          SELECT SINGLE steuc
+            FROM marc
+            INTO gw_saida-ncm
+            WHERE matnr  = gw_saida-matnr
+              AND werks = gw_saida-werks.
+        ELSE.
+          MESSAGE 'Preencher o campo NCM ou Material' TYPE 'S' DISPLAY LIKE 'E'.
+          gv_erro = 'X'.
+          EXIT.
+        ENDIF.
+      ELSE.
+        gw_saida-ncm = p_ncm.
+      ENDIF.
+
+      gw_saida-utli = p_matuse.
+      gw_saida-orig = p_matorg.
+      gw_saida-cmat = p_indust.
+
+      APPEND gw_saida TO gt_saida.
+
+    ENDLOOP.
+  ELSE.
+
+    gw_saida-item = sy-tabix.
+    gw_saida-saknr = p_saknr.
+    gw_saida-bukrs = p_bukrs.
+
+    IF p_werks IS NOT INITIAL.
+      gw_saida-werks = p_werks.
+    ELSE.
+      MESSAGE 'Campo Centro deve ser preenchido' TYPE 'S' DISPLAY LIKE 'E'.
+      gv_erro = 'X'.
+      EXIT.
+    ENDIF.
+
+    gw_saida-lifnr = p_lifnr.
+    gw_saida-menge = '1'.
+    gw_saida-netpr = p_netpr. "Valor do Item
+    gw_saida-meins = p_meins.
+
+    IF p_matnr IS NOT INITIAL.
+
+        gw_saida-matnr = p_matnr.
+
+        SELECT SINGLE matkl
+          FROM mara
+          INTO gw_saida-matkl
+          WHERE matnr = p_matnr.
+
+        SELECT SINGLE maktx
+          FROM makt
+          INTO gw_saida-maktx
+          WHERE matnr = p_matnr
+            AND spras = 'P'.
+
+        "gw_saida-iva = .
+      ELSE.
+        IF p_matkl IS INITIAL.
+          MESSAGE 'Preencher Material ou Grupo de Mercadorias' TYPE 'S' DISPLAY LIKE 'E'.
+          gv_erro = 'X'.
+          EXIT.
+        ELSE.
+          IF p_txz01 IS INITIAL.
+            MESSAGE 'Preencher Texto Breve' TYPE 'S' DISPLAY LIKE 'E'.
+            gv_erro = 'X'.
+            EXIT.
+          ELSE.
+            gw_saida-maktx = p_txz01.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+
+      IF p_ncm IS INITIAL.
+        IF p_matnr IS NOT INITIAL.
+          SELECT SINGLE steuc
+            FROM marc
+            INTO gw_saida-ncm
+            WHERE matnr  = gw_saida-matnr
+              AND werks = gw_saida-werks.
+        ELSE.
+          MESSAGE 'Preencher o campo NCM ou Material' TYPE 'S' DISPLAY LIKE 'E'.
+          gv_erro = 'X'.
+          EXIT.
+        ENDIF.
+      ELSE.
+        gw_saida-ncm = p_ncm.
+      ENDIF.
+
+      gw_saida-utli = p_matuse.
+      gw_saida-orig = p_matorg.
+      gw_saida-cmat = p_indust.
+
+      APPEND gw_saida TO gt_saida.
+
+  ENDIF.
+ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_MODIFY_SCREEN
+*&---------------------------------------------------------------------*
+FORM F_MODIFY_SCREEN .
+
+  LOOP AT SCREEN.
+    IF screen-name EQ 'P_BUKRS' OR screen-name EQ 'P_BSART' OR screen-name EQ 'P_LIFNR'
+    OR screen-name EQ 'P_EKORG' OR screen-name EQ 'P_BPRME' OR screen-name EQ 'P_INDUST'
+    OR screen-name EQ 'P_MATORG' OR screen-name EQ 'P_MATUSE' OR screen-name EQ 'P_MEINS'
+    OR screen-name EQ 'P_MENGE' OR screen-name EQ 'P_MWSKZ' OR screen-name EQ 'P_NETPR'
+    OR screen-name EQ 'P_REPOS' OR screen-name EQ 'P_WEBRE' OR screen-name EQ 'P_WEPOS'.
+      screen-input = 0.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_ADD_ROW
+*&---------------------------------------------------------------------*
+FORM F_ADD_ROW .
+
+  DATA: vl_lines TYPE i.
+
+  DESCRIBE TABLE gt_saida LINES vl_lines.
+
+  READ TABLE gt_saida INTO gw_saida INDEX vl_lines.
+
+  gw_saida-item = gw_saida-item + 1.
+  APPEND gw_saida TO gt_saida.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_DEL_ROW
+*&---------------------------------------------------------------------*
+FORM F_DEL_ROW .
+
+  READ TABLE gt_saida WITH KEY sel = 'X' TRANSPORTING NO FIELDS.
+
+  IF sy-subrc IS INITIAL.
+    DELETE gt_saida WHERE sel = 'X'.
+    LOOP AT gt_saida INTO gw_saida.
+      gw_saida-item = sy-tabix.
+      MODIFY gt_saida FROM gw_saida INDEX sy-tabix.
+    ENDLOOP.
+  ELSE.
+    MESSAGE 'Selecione uma linha' TYPE 'I'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_COPY_ROW
+*&---------------------------------------------------------------------*
+FORM F_COPY_ROW .
+
+  READ TABLE gt_saida WITH KEY sel = 'X' TRANSPORTING NO FIELDS.
+  IF sy-subrc IS INITIAL.
+    LOOP AT gt_saida INTO gw_saida WHERE sel = 'X'.
+      DESCRIBE TABLE gt_saida LINES vg_lines.
+      gw_saida-item = vg_lines + 1.
+      gw_saida-sel = abap_false.
+      APPEND gw_saida TO gt_saida.
+    ENDLOOP.
+  ELSE.
+    MESSAGE 'Selecione uma linha' TYPE 'I'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_CREATEPO
+*&---------------------------------------------------------------------*
+FORM F_CREATEPO .
+
+
+  IF gt_saida IS NOT INITIAL.
+
+    gw_header-doc_type    = p_bsart. "Tipo de doc
+    gw_header-comp_code   = p_bukrs. "Empresa
+    gw_header-purch_org   = p_ekorg. "Org.Compras
+    gw_header-pur_group   = p_ekgrp. "Grp.Comprador
+    gw_header-vendor      = p_lifnr. "Fornecedor
+
+    LOOP AT gt_saida INTO gw_saida.
+
+      gw_item-po_item     = gw_saida-item. "Item
+      gw_item-material    = gw_saida-matnr. "Material
+      gw_item-short_text  = gw_saida-maktx. "Texto Breve
+      gw_item-plant       = gw_saida-werks. "Centro
+      gw_item-matl_group  = gw_saida-matkl. "Grp.Mercadorias
+      gw_item-quantity    = gw_saida-menge. "Quantidade
+      gw_item-po_unit     = gw_saida-meins. "Unidade
+      gw_item-net_price   = gw_saida-netpr. "Valor Item
+      gw_item-price_unit  = p_bprme. "Unidade preço
+      gw_item-acctasscat  = gw_saida-ccc. "Ctg.CC.
+      gw_item-bras_nbm    = gw_saida-ncm. "NCM
+      gw_item-matl_usage  = gw_saida-utli. "Utilização mat.
+      gw_item-mat_origin  = gw_saida-orig. "Orig. mat.
+      gw_item-in_house    = gw_saida-cmat. "Cat.Mat.
+      gw_item-gr_ind      = p_wepos. "EM
+      gw_item-ir_ind      = p_repos. "Entrada Fat.
+      gw_item-gr_basediv  = p_webre. "RevFatEM
+
+      APPEND gw_item TO gt_item.
+
+      gw_account-po_item    = gw_saida-item. "Item
+      gw_account-quantity   = p_menge. "Quantidade
+      gw_account-NET_VALUE  = gw_saida-netpr. "Valor do item
+      gw_account-GL_ACCOUNT = gw_saida-saknr. "Conta Razão
+
+      CASE gw_saida-ccc.
+        WHEN 'K'.
+          gw_account-costcenter  = gw_saida-cc.
+        WHEN 'P'.
+          gw_account-wbs_element = gw_saida-cc.
+        WHEN 'L'.
+          gw_account-orderid     = gw_saida-cc.
+      ENDCASE.
+
+      APPEND gw_account TO gt_account.
+
+    ENDLOOP.
+
+  ENDIF.
+
+  IF gw_headerx IS INITIAL.
+    gw_headerx-doc_type  = 'X'.
+    gw_headerx-comp_code = 'X'.
+    gw_headerx-purch_org = 'X'.
+    gw_headerx-pur_group = 'X'.
+    gw_headerx-vendor    = 'X'.
+  ENDIF.
+
+  IF gt_itemx IS INITIAL.
+    gw_itemx-po_item     = 'X'.
+    gw_itemx-material    = 'X'.
+    gw_itemx-short_text  = 'X'.
+    gw_itemx-plant       = 'X'.
+    gw_itemx-matl_group  = 'X'.
+    gw_itemx-quantity    = 'X'.
+    gw_itemx-po_unit     = 'X'.
+    gw_itemx-net_price   = 'X'.
+    gw_itemx-price_unit  = 'X'.
+    gw_itemx-acctasscat  = 'X'.
+    gw_itemx-bras_nbm    = 'X'.
+    gw_itemx-matl_usage  = 'X'.
+    gw_itemx-mat_origin  = 'X'.
+    gw_itemx-in_house    = 'X'.
+    gw_itemx-gr_ind      = 'X'.
+    gw_itemx-ir_ind      = 'X'.
+    gw_itemx-gr_basediv  = 'X'.
+    APPEND gw_itemx TO gt_itemx.
+  ENDIF.
+
+  IF gt_accountx IS INITIAL.
+    gw_accountx-po_item    = 'X'.
+    gw_accountx-quantity   = 'X'.
+    gw_accountx-NET_VALUE  = 'X'.
+    gw_accountx-GL_ACCOUNT = 'X'.
+    CASE gw_saida-ccc.
+      WHEN 'K'.
+        gw_accountx-costcenter  = 'X'.
+      WHEN 'P'.
+        gw_accountx-wbs_element = 'X'.
+      WHEN 'L'.
+        gw_accountx-orderid     = 'X'.
+    ENDCASE.
+    APPEND gw_accountx TO gt_accountx.
+  ENDIF.
+
+  DATA: lv_exec  TYPE c,
+        lv_netpr TYPE ekpo-netpr.
+  CLEAR: gw_item.
+  lv_exec = abap_true.
+  LOOP AT gt_item INTO gw_item.
+    lv_netpr = gw_item-net_price.
+    IF lv_netpr > p_netpr.
+      MESSAGE 'Valor total dos itens maior que valor da NFs' TYPE 'S' DISPLAY LIKE 'E'.
+      lv_exec = abap_false.
+    ENDIF.
+  ENDLOOP.
+
+  IF lv_exec EQ abap_true.
+    IF gt_item IS NOT INITIAL AND gt_account IS NOT INITIAL AND gw_header IS NOT INITIAL.
+
+      CALL FUNCTION 'BAPI_PO_CREATE1'
+        EXPORTING
+          POHEADER                     = gw_header
+          POHEADERX                    = gw_headerx
+*         POADDRVENDOR                 =
+         TESTRUN                      = vg_teste
+*         MEMORY_UNCOMPLETE            =
+*         MEMORY_COMPLETE              =
+*         POEXPIMPHEADER               =
+*         POEXPIMPHEADERX              =
+*         VERSIONS                     =
+*         NO_MESSAGING                 =
+*         NO_MESSAGE_REQ               =
+*         NO_AUTHORITY                 =
+*         NO_PRICE_FROM_PO             =
+*         PARK_COMPLETE                =
+*         PARK_UNCOMPLETE              =
+       IMPORTING
+         EXPHEADER                    = gw_poheader
+       TABLES
+         RETURN                       = gt_return
+         POITEM                       = gt_item
+         POITEMX                      = gt_itemx
+         POACCOUNT                    = gt_account
+         POACCOUNTX                   = gt_accountx .
+
+
+      READ TABLE gt_return WITH KEY type = 'E' TRANSPORTING NO FIELDS.
+      IF sy-subrc EQ 0.
+        LOOP AT gt_return INTO gw_return.
+          IF gw_return-type = 'E'.
+            vg_message-type = 'Erro'.
+          ELSE.
+            vg_message-type = 'Alerta'.
+          ENDIF.
+          vg_message-space = '- '.
+          vg_message-space2 = ''.
+          vg_message-message = gw_return-message.
+          APPEND vg_message TO gt_message.
+        ENDLOOP.
+      ELSE.
+        LOOP AT gt_return INTO gw_return.
+          IF gw_return-type EQ 'S'.
+            vg_message-type = 'Sucesso'.
+          ELSE.
+            vg_message-type = 'Alerta'.
+          ENDIF.
+          vg_message-space   = '-'.
+          vg_message-space2  = ''.
+          vg_message-message = gw_return-message.
+          APPEND vg_message TO gt_message.
+        ENDLOOP.
+      ENDIF.
+
+        CALL FUNCTION 'POPUP_WITH_TABLE_DISPLAY'
+          EXPORTING
+            ENDPOS_COL         = 100
+            ENDPOS_ROW         = 15
+            STARTPOS_COL       = 20
+            STARTPOS_ROW       = 5
+            TITLETEXT          = 'Log de Processamento'
+          TABLES
+            VALUETAB           = gt_message
+         EXCEPTIONS
+           BREAK_OFF          = 1
+           OTHERS             = 2.
+
+        CLEAR: gt_message.
+    ENDIF.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_CONFIRM
+*&---------------------------------------------------------------------*
+FORM F_CONFIRM .
+
+  DATA: vl_ans TYPE c.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+  EXPORTING
+   TITLEBAR                    = 'ALERTA!'
+    TEXT_QUESTION               = 'Confirma os dados do documento a ser criado?'
+   TEXT_BUTTON_1               = 'OK'
+   ICON_BUTTON_1               = 'ICON_CHECKED'
+   TEXT_BUTTON_2               = 'VOLTAR'
+   ICON_BUTTON_2               = 'ICON_CANCEL'
+   DISPLAY_CANCEL_BUTTON       = ' '
+   POPUP_TYPE                  = 'ICON_MESSAGE_ERROR'
+ IMPORTING
+   ANSWER                      = vl_ans
+ EXCEPTIONS
+   TEXT_NOT_FOUND              = 1
+   OTHERS                      = 2
+          .
+ IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+ ENDIF.
+
+ IF vl_ans EQ 1.
+
+   CLEAR: gt_field.
+   gw_field-field = 'CONFIRM'.
+   APPEND gw_field TO gt_field.
+
+   LOOP AT it_fieldcat INTO wa_fieldcat.
+     wa_fieldcat-edit = ''.
+     MODIFY it_fieldcat FROM wa_fieldcat INDEX sy-tabix.
+   ENDLOOP.
+
+   CALL FUNCTION 'REUSE_ALV_GRID_LAYOUT_INFO_SET'
+    EXPORTING
+     IT_FIELDCAT          = it_fieldcat.
+
+ ENDIF.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_ANULED
+*&---------------------------------------------------------------------*
+FORM F_ANULED .
+
+  LOOP AT it_fieldcat INTO wa_fieldcat.
+    IF wa_fieldcat-fieldname = 'SAKNR' OR wa_fieldcat-fieldname = 'IVA' OR wa_fieldcat-fieldname = 'CC' OR
+      wa_fieldcat-fieldname = 'CCC' OR wa_fieldcat-fieldname = 'NCM' OR wa_fieldcat-fieldname = 'MATKL' OR
+      wa_fieldcat-fieldname = 'MAKTX'.
+       wa_fieldcat-edit = 'X'.
+       MODIFY it_fieldcat FROM wa_fieldcat INDEX sy-tabix.
+    ENDIF.
+  ENDLOOP.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_LAYOUT_INFO_SET'
+    EXPORTING
+     IT_FIELDCAT          = it_fieldcat.
+
+  CLEAR: gt_field.
+
+  gw_field-field = 'RECORD'.
+  APPEND gw_field TO gt_field.
+  gw_field-field = 'MODIFY'.
+  APPEND gw_field TO gt_field.
+
+ENDFORM.
