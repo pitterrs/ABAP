@@ -1,0 +1,10 @@
+Ponto Enhancement Point para alteração de valores da Nota Fiscal (BR) na MIRO
+Como bem sabemos a SAP disponibiliza poucos pontos para alterações do standard na geração de Nota Fiscal, tudo bem que com a entrada do ECC 6.0 a disponibilização do Enhancements Points foi a salvação da lavoura para muitos abaps, pq geralmente as BADIs, EXITS, BTE, nunca estavam onde queríamos alterar. Como sou das antigas eu sou do principio que esses Enhancements devem ser usados com moderação e com uma lógica precisa do ponto onde deve ser incluído, pois vejo muita gente colocando essas ampliações em duplicidade em pontos diferentes para um mesmo processo. Então sejamos mais especialistas e antes de usar um ponto de ampliação explicito que seja com muito bom senso, e antes de mais nada utilizem os métodos standard para tal, e em último caso usar essa ampliação.
+
+No caso em questão vou dar a dica de um ponto de ampliação muito interessante para alteração de valores da Nota Fiscal, nesse caso na entrada fiscal MIRO. Eu utilizei muitas vezes pq em muitas situações as empresas por alguma situação especifica querem que na NF tenha um valor diferenciado para os impostos nos campos de base, valor de imposto, outras bases e bases excluídas.
+
+O enhancement spot é standard então já está localizado no meio da rotina da geração da NF da MIRO.
+
+No include LJ1BIF01
+Dentro do Form NF_OBJECT_ADD
+É só criar a a implementação da ampliação sobre spot ES_SAPLJ1BI
