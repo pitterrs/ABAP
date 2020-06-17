@@ -3,7 +3,7 @@ Sites e comunidades com informações sobre ABAP
 http://abapjuniores.blogspot.com/  
 https://www.sap.com/community.html  
 http://abap101.com/  
-  
+https://blogs.sap.com/2015/11/14/what-about-debug-miro-lets-try-it/
   
   
 **Tipos de Dados Padrão ABAP**  
